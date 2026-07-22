@@ -1,0 +1,122 @@
+:root {
+  font-family: system-ui, sans-serif;
+  background: #f7f7f7;
+  color: #111;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body, html {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.app-shell {
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.reminder-list {
+  display: grid;
+  gap: 12px;
+}
+
+.reminder-card {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+}
+
+.reminder-card h2 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.reminder-card p {
+  margin: 0;
+  color: #555;
+}
+
+.fab {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: none;
+  background: #6200ee;
+  color: white;
+  font-size: 2rem;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+}
+
+.dialog {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.dialog-card {
+  width: 100%;
+  max-width: 400px;
+  background: white;
+  padding: 24px;
+  border-radius: 20px;
+}
+
+.dialog-card label {
+  display: block;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+
+.dialog-card input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  margin-top: 8px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.dialog-actions button {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.dialog-actions button:first-child {
+  background: #eee;
+}
+
+.dialog-actions button:last-child {
+  background: #6200ee;
+  color: white;
+}

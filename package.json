@@ -1,0 +1,22 @@
+{
+  "name": "erinnerungsapp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "serve www",
+    "build": "rm -rf www && mkdir -p www && cp -R src/. www/",
+    "sync": "npx cap sync",
+    "android": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/local-notifications": "^8.2.1",
+    "@capacitor/preferences": "^8.0.1",
+    "@capawesome-team/capacitor-datetime-picker": "^8.1.1",
+    "android": "^0.0.8"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.4.1",
+    "serve": "^14.0.1"
+  }
+}

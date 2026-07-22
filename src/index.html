@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Erinnerungsapp</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header>
+        <h1>Erinnerungen</h1>
+      </header>
+
+      <main>
+        <div class="reminder-list" id="reminderList"></div>
+      </main>
+
+      <button class="fab" id="addReminderButton">+</button>
+    </div>
+
+    <div class="dialog" id="dialogOverlay" hidden>
+      <div class="dialog-card">
+        <h2>Neue Erinnerung</h2>
+        <label>
+          Text
+          <input id="reminderText" type="text" />
+        </label>
+        <label>
+          Datum & Uhrzeit
+          <input id="reminderDatetime" type="datetime-local" />
+        </label>
+        <div class="dialog-actions">
+          <button id="cancelButton" type="button">Abbrechen</button>
+          <button id="saveButton" type="button">Speichern</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
