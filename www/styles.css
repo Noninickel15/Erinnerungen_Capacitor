@@ -1,7 +1,9 @@
 :root {
-  font-family: system-ui, sans-serif;
-  background: #f7f7f7;
-  color: #111;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f5f7fb;
+  color: #162033;
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * {
@@ -11,119 +13,125 @@
 body, html {
   margin: 0;
   min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fb 0%, #eef4ff 100%);
+  padding: 0;
 }
 
-.app-shell {
-  max-width: 540px;
-  margin: 0 auto;
-  padding: 16px;
+ion-app {
+  background: transparent;
 }
 
-header {
+ion-page {
+  min-height: 100vh;
+}
+
+ion-content {
+  --background: transparent;
+  --padding-top: calc(8px + var(--safe-area-top));
+  --padding-bottom: calc(16px + var(--safe-area-bottom));
+}
+
+.page-intro {
+  margin: 8px 0 16px;
+  min-height: 120px;
   display: flex;
+  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
+  text-align: center;
+  padding: 8px 0;
 }
 
-h1 {
-  margin: 0;
-  font-size: 2rem;
+.page-intro h2 {
+  margin: 0 0 4px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #162033;
 }
 
-..reminder-list {
+.reminder-list {
   display: grid;
   gap: 12px;
+  padding-bottom: 72px;
+}
+
+.empty-card {
+  text-align: center;
 }
 
 .empty-state {
-  text-align: center;
-  color: #666;
-  padding: 40px 0;
-  font-size: 1rem;
+  margin: 0;
+  color: #5f6b7a;
 }
 
 .reminder-card {
-  background: white;
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
-}
-
-.reminder-card h2 {
-  margin: 0 0 8px;
-  font-size: 1rem;
-}
-
-.reminder-card p {
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
   margin: 0;
-  color: #555;
 }
 
-.fab {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: none;
-  background: #6200ee;
-  color: white;
-  font-size: 2rem;
-  cursor: pointer;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+.reminder-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.reminder-main {
+  flex: 1;
+}
+
+.reminder-main h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  color: #162033;
+}
+
+.reminder-main p {
+  margin: 0;
+  color: #5f6b7a;
+  font-size: 0.95rem;
+}
+
+.reminder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 0;
+  min-width: 140px;
 }
 
 .dialog {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(15, 23, 42, 0.35);
   display: grid;
   place-items: center;
   padding: 16px;
+  z-index: 999;
 }
 
 .dialog-card {
-  width: 100%;
-  max-width: 400px;
-  background: white;
-  padding: 24px;
-  border-radius: 20px;
-}
-
-.dialog-card label {
-  display: block;
-  margin-bottom: 16px;
-  font-size: 0.9rem;
-}
-
-.dialog-card input {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 12px;
-  margin-top: 8px;
+  width: min(100%, 420px);
+  border-radius: 22px;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.2);
+  margin: 0;
 }
 
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 8px;
+  margin-top: 12px;
 }
 
-.dialog-actions button {
-  padding: 12px 18px;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
+ion-item {
+  --padding-start: 0;
+  --inner-padding-end: 0;
 }
 
-.dialog-actions button:first-child {
-  background: #eee;
-}
-
-.dialog-actions button:last-child {
-  background: #6200ee;
-  color: white;
+ion-input,
+ion-datetime {
+  margin-top: 6px;
 }

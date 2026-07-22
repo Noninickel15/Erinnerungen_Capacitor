@@ -13,6 +13,7 @@
     "@capacitor/local-notifications": "^8.2.1",
     "@capacitor/preferences": "^8.0.1",
     "@capawesome-team/capacitor-datetime-picker": "^8.1.1",
+    "@ionic/core": "^8.8.14",
     "android": "^0.0.8"
   },
   "devDependencies": {

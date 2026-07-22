@@ -3,38 +3,63 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#3880ff" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Erinnerungsapp" />
     <title>Erinnerungsapp</title>
+    <link rel="icon" type="image/png" href="./erinnerung.png" />
+    <link rel="apple-touch-icon" href="./erinnerung.png" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css" />
     <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
   </head>
   <body>
-    <div class="app-shell">
-      <header>
-        <h1>Erinnerungen</h1>
-      </header>
+    <ion-app>
+      <ion-page>
+        <ion-header translucent="true">
+          <ion-toolbar color="primary">
+            <ion-title>Erinnerungen</ion-title>
+          </ion-toolbar>
+        </ion-header>
 
-      <main>
-        <div class="reminder-list" id="reminderList"></div>
-      </main>
+        <ion-content class="ion-padding">
+          <div class="page-intro">
+            <h2>Wilkommen bei Erinnerungen!</h2>            
+          </div>
+          <div class="reminder-list" id="reminderList"></div>
+        </ion-content>
 
-      <button class="fab" id="addReminderButton">+</button>
-    </div>
+        <ion-fab slot="fixed" vertical="bottom" horizontal="end">
+          <ion-fab-button id="addReminderButton" color="primary">
+            <ion-icon name="add"></ion-icon>
+          </ion-fab-button>
+        </ion-fab>
+      </ion-page>
+    </ion-app>
 
     <div class="dialog" id="dialogOverlay" hidden>
-      <div class="dialog-card">
-        <h2>Neue Erinnerung</h2>
-        <label>
-          Text
-          <input id="reminderText" type="text" />
-        </label>
-        <label>
-          Datum & Uhrzeit
-          <input id="reminderDatetime" type="datetime-local" />
-        </label>
-        <div class="dialog-actions">
-          <button id="cancelButton" type="button">Abbrechen</button>
-          <button id="saveButton" type="button">Speichern</button>
-        </div>
-      </div>
+      <ion-card class="dialog-card">
+        <ion-card-header>
+          <ion-card-title>Neue Erinnerung</ion-card-title>
+        </ion-card-header>
+
+        <ion-card-content>
+          <ion-item class="ion-no-padding" lines="none">
+            <ion-label position="stacked">Text</ion-label>
+            <ion-input id="reminderText" placeholder="z. B. Arzttermin" autocomplete="off"></ion-input>
+          </ion-item>
+
+          <ion-item class="ion-no-padding" lines="none">
+            <ion-label position="stacked">Datum & Uhrzeit</ion-label>
+            <ion-datetime id="reminderDatetime" presentation="date-time" prefer-wheel="true"></ion-datetime>
+          </ion-item>
+
+          <div class="dialog-actions">
+            <ion-button id="cancelButton" type="button" fill="clear" color="medium">Abbrechen</ion-button>
+            <ion-button id="saveButton" type="button">Speichern</ion-button>
+          </div>
+        </ion-card-content>
+      </ion-card>
     </div>
 
     <script src="app.js"></script>
