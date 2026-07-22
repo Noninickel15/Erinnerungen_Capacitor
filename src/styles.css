@@ -31,9 +31,16 @@ h1 {
   font-size: 2rem;
 }
 
-.reminder-list {
+..reminder-list {
   display: grid;
   gap: 12px;
+}
+
+.empty-state {
+  text-align: center;
+  color: #666;
+  padding: 40px 0;
+  font-size: 1rem;
 }
 
 .reminder-card {
