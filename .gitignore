@@ -1,0 +1,8 @@
+node_modules/
+www/
+android/build/
+android/.gradle/
+npm-cache/
+npm-debug.log
+.DS_Store
+.vscode/
