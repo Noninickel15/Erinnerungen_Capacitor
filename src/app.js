@@ -7,6 +7,8 @@ const cancelButton = document.getElementById('cancelButton');
 const saveButton = document.getElementById('saveButton');
 
 const STORAGE_KEY = 'erinnerungsapp_reminders';
+const REMINDER_ACTION_TYPE_ID = 'reminder_actions';
+const COMPLETE_REMINDER_ACTION_ID = 'complete_reminder';
 let editIndex = null;
 
 function getLocalNotifications() {
@@ -51,12 +53,52 @@ async function scheduleReminderNotification(reminder) {
         id: reminder.notificationId,
         title: 'Erinnerung',
         body: reminder.text,
+        actionTypeId: REMINDER_ACTION_TYPE_ID,
         schedule: { at: scheduledAt }
       }]
     });
   } catch (error) {
     // The reminder remains saved if scheduling is unavailable or rejected.
     console.warn('Could not schedule local notification:', error);
+  }
+}
+
+async function registerNotificationActions() {
+  const localNotifications = getLocalNotifications();
+  if (!localNotifications) {
+    return;
+  }
+
+  try {
+    await localNotifications.registerActionTypes({
+      types: [{
+        id: REMINDER_ACTION_TYPE_ID,
+        actions: [{ id: COMPLETE_REMINDER_ACTION_ID, title: 'Erledigt' }]
+      }]
+    });
+
+    await localNotifications.addListener(
+      'localNotificationActionPerformed',
+      ({ actionId, notification }) => {
+        if (actionId !== COMPLETE_REMINDER_ACTION_ID) {
+          return;
+        }
+
+        const reminders = loadReminders();
+        const reminderIndex = reminders.findIndex(
+          reminder => reminder.notificationId === notification.id
+        );
+        if (reminderIndex === -1) {
+          return;
+        }
+
+        reminders.splice(reminderIndex, 1);
+        saveReminders(reminders);
+        renderReminders();
+      }
+    );
+  } catch (error) {
+    console.warn('Could not register notification actions:', error);
   }
 }
 
@@ -284,6 +326,7 @@ async function saveCurrentReminder() {
   }
 
   saveReminders(reminders);
+  await scheduleReminderNotification(reminder);
   closeDialog();
   renderReminders();
 }
@@ -304,4 +347,5 @@ if (dialogOverlay) {
 }
 
 registerAppShortcutListener();
+registerNotificationActions();
 renderReminders();
