@@ -9,6 +9,57 @@ const saveButton = document.getElementById('saveButton');
 const STORAGE_KEY = 'erinnerungsapp_reminders';
 let editIndex = null;
 
+function getLocalNotifications() {
+  return window.Capacitor?.Plugins?.LocalNotifications;
+}
+
+function createNotificationId() {
+  // Android notification IDs must fit in a signed 32-bit integer.
+  return Math.floor(Math.random() * 2147483646) + 1;
+}
+
+async function scheduleReminderNotification(reminder) {
+  if (!reminder.datetime) {
+    return;
+  }
+
+  const scheduledAt = new Date(reminder.datetime);
+  if (Number.isNaN(scheduledAt.getTime())) {
+    console.warn('Could not schedule reminder: invalid date:', reminder.datetime);
+    return;
+  }
+
+  const localNotifications = getLocalNotifications();
+  if (!localNotifications) {
+    // The browser preview does not have the native Capacitor bridge.
+    return;
+  }
+
+  try {
+    let permission = await localNotifications.checkPermissions();
+    if (permission.display === 'prompt') {
+      permission = await localNotifications.requestPermissions();
+    }
+
+    if (permission.display !== 'granted') {
+      console.warn('Notification permission was not granted.');
+      return;
+    }
+
+    await localNotifications.schedule({
+      notifications: [{
+        id: reminder.notificationId,
+        title: 'Erinnerung',
+        body: reminder.text,
+        schedule: { at: scheduledAt }
+      }]
+    });
+  } catch (error) {
+    // The reminder remains saved if scheduling is unavailable or rejected.
+    console.warn('Could not schedule local notification:', error);
+  }
+}
+
 function loadReminders() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -219,7 +270,12 @@ async function saveCurrentReminder() {
   }
 
   const reminders = loadReminders();
-  const reminder = { text, datetime: datetime || null };
+  const previousReminder = editIndex !== null ? reminders[editIndex] : null;
+  const reminder = {
+    text,
+    datetime: datetime || null,
+    notificationId: previousReminder?.notificationId ?? createNotificationId()
+  };
 
   if (editIndex !== null) {
     reminders[editIndex] = reminder;
