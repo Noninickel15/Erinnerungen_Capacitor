@@ -12,6 +12,7 @@ dependencies {
     implementation project(':capacitor-local-notifications')
     implementation project(':capacitor-preferences')
     implementation project(':capawesome-team-capacitor-datetime-picker')
+    implementation project(':capawesome-capacitor-app-shortcuts')
 
 }
 

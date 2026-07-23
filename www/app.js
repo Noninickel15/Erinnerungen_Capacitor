@@ -9,57 +9,6 @@ const saveButton = document.getElementById('saveButton');
 const STORAGE_KEY = 'erinnerungsapp_reminders';
 let editIndex = null;
 
-function getLocalNotifications() {
-  return window.Capacitor?.Plugins?.LocalNotifications;
-}
-
-function createNotificationId() {
-  // Android requires notification IDs to fit into a signed 32-bit integer.
-  return Math.floor(Math.random() * 2147483646) + 1;
-}
-
-async function scheduleReminderNotification(reminder) {
-  if (!reminder.datetime) {
-    return;
-  }
-
-  const scheduledAt = new Date(reminder.datetime);
-  if (Number.isNaN(scheduledAt.getTime())) {
-    console.warn('Could not schedule reminder: invalid date:', reminder.datetime);
-    return;
-  }
-
-  const localNotifications = getLocalNotifications();
-  if (!localNotifications) {
-    // The browser preview has no Capacitor native bridge.
-    return;
-  }
-
-  try {
-    let permission = await localNotifications.checkPermissions();
-    if (permission.display === 'prompt') {
-      permission = await localNotifications.requestPermissions();
-    }
-
-    if (permission.display !== 'granted') {
-      console.warn('Notification permission was not granted.');
-      return;
-    }
-
-    await localNotifications.schedule({
-      notifications: [{
-        id: reminder.notificationId,
-        title: 'Erinnerung',
-        body: reminder.text,
-        schedule: { at: scheduledAt }
-      }]
-    });
-  } catch (error) {
-    // Saving the reminder must still work if scheduling is unavailable or denied.
-    console.warn('Could not schedule local notification:', error);
-  }
-}
-
 function loadReminders() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -230,11 +179,19 @@ function closeDialog() {
   }
 }
 
-function deleteReminder(index) {
-  const reminders = loadReminders();
-  reminders.splice(index, 1);
-  saveReminders(reminders);
-  renderReminders();
+function registerAppShortcutListener() {
+  const appShortcuts = window.Capacitor?.Plugins?.AppShortcuts;
+  if (!appShortcuts) {
+    return;
+  }
+
+  appShortcuts.addListener('click', ({ id }) => {
+    if (id === 'feedback') {
+      openDialog();
+    }
+  }).catch(error => {
+    console.warn('Could not register app shortcut listener:', error);
+  });
 }
 
 function editReminder(index) {
@@ -245,6 +202,14 @@ function editReminder(index) {
   openDialog(reminder, index);
 }
 
+function deleteReminder(index) {
+  const reminders = loadReminders();
+  reminders.splice(index, 1);
+  saveReminders(reminders);
+  renderReminders();
+}
+
+
 async function saveCurrentReminder() {
   const text = (await getFieldValue(reminderText)).trim();
   const datetime = await getFieldValue(reminderDatetime);
@@ -254,12 +219,7 @@ async function saveCurrentReminder() {
   }
 
   const reminders = loadReminders();
-  const previousReminder = editIndex !== null ? reminders[editIndex] : null;
-  const reminder = {
-    text,
-    datetime: datetime || null,
-    notificationId: previousReminder?.notificationId ?? createNotificationId()
-  };
+  const reminder = { text, datetime: datetime || null };
 
   if (editIndex !== null) {
     reminders[editIndex] = reminder;
@@ -268,7 +228,6 @@ async function saveCurrentReminder() {
   }
 
   saveReminders(reminders);
-  await scheduleReminderNotification(reminder);
   closeDialog();
   renderReminders();
 }
@@ -288,4 +247,5 @@ if (dialogOverlay) {
   dialogOverlay.style.display = 'none';
 }
 
+registerAppShortcutListener();
 renderReminders();

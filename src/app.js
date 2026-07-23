@@ -179,6 +179,21 @@ function closeDialog() {
   }
 }
 
+function registerAppShortcutListener() {
+  const appShortcuts = window.Capacitor?.Plugins?.AppShortcuts;
+  if (!appShortcuts) {
+    return;
+  }
+
+  appShortcuts.addListener('click', ({ id }) => {
+    if (id === 'feedback') {
+      openDialog();
+    }
+  }).catch(error => {
+    console.warn('Could not register app shortcut listener:', error);
+  });
+}
+
 function editReminder(index) {
   const reminders = loadReminders();
   const reminder = reminders[index];
@@ -232,6 +247,5 @@ if (dialogOverlay) {
   dialogOverlay.style.display = 'none';
 }
 
+registerAppShortcutListener();
 renderReminders();
-
-

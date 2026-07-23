@@ -1,5 +1,12 @@
 {
   "appId": "com.erinnerungsapp.app",
   "appName": "Erinnerungsapp",
-  "webDir": "www"
+  "webDir": "www",
+  "plugins": {
+    "AppShortcuts": {
+      "shortcuts": [
+        { "id": "feedback", "title": "Feedback" }
+      ]
+    }
+  }
 }
