@@ -1,13 +1,143 @@
+import { DatetimePicker } from '@capawesome-team/capacitor-datetime-picker';
+
+
 const reminderList = document.getElementById('reminderList');
 const addReminderButton = document.getElementById('addReminderButton');
 const dialogOverlay = document.getElementById('dialogOverlay');
 const reminderText = document.getElementById('reminderText');
 const reminderDatetime = document.getElementById('reminderDatetime');
+const nativeDatetimePickerButton = document.getElementById('nativeDatetimePickerButton');
 const cancelButton = document.getElementById('cancelButton');
 const saveButton = document.getElementById('saveButton');
 
 const STORAGE_KEY = 'erinnerungsapp_reminders';
+const REMINDER_ACTION_TYPE_ID = 'reminder_actions';
+const COMPLETE_REMINDER_ACTION_ID = 'complete_reminder';
 let editIndex = null;
+
+function getLocalNotifications() {
+  return window.Capacitor?.Plugins?.LocalNotifications;
+}
+
+async function presentDatetimePicker(initialValue = null) {
+  const datetimePicker = window.Capacitor?.Plugins?.DatetimePicker;
+  if (!datetimePicker) {
+    return null;
+  }
+
+  try {
+    const date = initialValue ? new Date(initialValue) : new Date();
+    const { value } = await datetimePicker.present({
+      cancelButtonText: 'Abbrechen',
+      doneButtonText: 'Übernehmen',
+      mode: 'datetime',
+      value: date.toISOString(),
+      theme: 'dark',
+      locale: 'de-DE'
+    });
+
+    return value;
+  } catch (error) {
+    // Closing the native picker is reported as an error by the plugin.
+    return null;
+  }
+}
+
+async function chooseNativeDatetime() {
+  const currentValue = await getFieldValue(reminderDatetime);
+  const value = await presentDatetimePicker(currentValue);
+
+  if (value) {
+    reminderDatetime.value = value;
+  }
+}
+
+function createNotificationId() {
+  // Android notification IDs must fit in a signed 32-bit integer.
+  return Math.floor(Math.random() * 2147483646) + 1;
+}
+
+async function scheduleReminderNotification(reminder) {
+  if (!reminder.datetime) {
+    return;
+  }
+
+  const scheduledAt = new Date(reminder.datetime);
+  if (Number.isNaN(scheduledAt.getTime())) {
+    console.warn('Could not schedule reminder: invalid date:', reminder.datetime);
+    return;
+  }
+
+  const localNotifications = getLocalNotifications();
+  if (!localNotifications) {
+    // The browser preview does not have the native Capacitor bridge.
+    return;
+  }
+
+  try {
+    let permission = await localNotifications.checkPermissions();
+    if (permission.display === 'prompt') {
+      permission = await localNotifications.requestPermissions();
+    }
+
+    if (permission.display !== 'granted') {
+      console.warn('Notification permission was not granted.');
+      return;
+    }
+
+    await localNotifications.schedule({
+      notifications: [{
+        id: reminder.notificationId,
+        title: 'Erinnerung',
+        body: reminder.text,
+        actionTypeId: REMINDER_ACTION_TYPE_ID,
+        schedule: { at: scheduledAt }
+      }]
+    });
+  } catch (error) {
+    // The reminder remains saved if scheduling is unavailable or rejected.
+    console.warn('Could not schedule local notification:', error);
+  }
+}
+
+async function registerNotificationActions() {
+  const localNotifications = getLocalNotifications();
+  if (!localNotifications) {
+    return;
+  }
+
+  try {
+    await localNotifications.registerActionTypes({
+      types: [{
+        id: REMINDER_ACTION_TYPE_ID,
+        actions: [{ id: COMPLETE_REMINDER_ACTION_ID, title: 'Erledigt' }]
+      }]
+    });
+
+    await localNotifications.addListener(
+      'localNotificationActionPerformed',
+      ({ actionId, notification }) => {
+        if (actionId !== COMPLETE_REMINDER_ACTION_ID) {
+          return;
+        }
+
+        const reminders = loadReminders();
+        const reminderIndex = reminders.findIndex(
+          reminder => reminder.notificationId === notification.id
+        );
+        if (reminderIndex === -1) {
+          return;
+        }
+
+        reminders.splice(reminderIndex, 1);
+        saveReminders(reminders);
+        renderReminders();
+      }
+    );
+  } catch (error) {
+    console.warn('Could not register notification actions:', error);
+  }
+}
 
 function loadReminders() {
   try {
@@ -33,20 +163,20 @@ function saveReminders(reminders) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(safeReminders));
 }
 
-function formatDateTime(value) {
-  if (!value) {
-    return 'Kein Datum';
-  }
+const present = async () => {
+  const date = new Date('1995-12-24T02:23:00');
 
-  const date = new Date(value);
-  return date.toLocaleString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
+  const { value } = await DatetimePicker.present({
+    cancelButtonText: 'Cancel',
+    doneButtonText: 'Ok',
+    mode: 'time',
+    value: date.toISOString(),
+    theme: 'dark',
+    locale: 'en-US',
   });
-}
+
+  return value;
+};
 
 function escapeHtml(value) {
   return String(value)
@@ -219,7 +349,12 @@ async function saveCurrentReminder() {
   }
 
   const reminders = loadReminders();
-  const reminder = { text, datetime: datetime || null };
+  const previousReminder = editIndex !== null ? reminders[editIndex] : null;
+  const reminder = {
+    text,
+    datetime: datetime || null,
+    notificationId: previousReminder?.notificationId ?? createNotificationId()
+  };
 
   if (editIndex !== null) {
     reminders[editIndex] = reminder;
@@ -228,12 +363,16 @@ async function saveCurrentReminder() {
   }
 
   saveReminders(reminders);
+  await scheduleReminderNotification(reminder);
   closeDialog();
   renderReminders();
 }
 
 if (addReminderButton) {
   bindButtonClick(addReminderButton, () => openDialog());
+}
+if (nativeDatetimePickerButton) {
+  bindButtonClick(nativeDatetimePickerButton, chooseNativeDatetime);
 }
 if (cancelButton) {
   bindButtonClick(cancelButton, closeDialog);
@@ -248,4 +387,5 @@ if (dialogOverlay) {
 }
 
 registerAppShortcutListener();
+registerNotificationActions();
 renderReminders();
