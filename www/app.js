@@ -11,14 +11,93 @@ const STORAGE_KEY = 'erinnerungsapp_reminders';
 const REMINDER_ACTION_TYPE_ID = 'reminder_actions';
 const COMPLETE_REMINDER_ACTION_ID = 'complete_reminder';
 let editIndex = null;
+let remindersCache = [];
 
-// 2 Block Dattenhaltung im local storage des Browsers
+// 2 Block Plugin-Helfer und Datenhaltung
 function getLocalNotifications() {
   return window.Capacitor?.Plugins?.LocalNotifications;
 }
 
+function getPreferences() {
+  return window.Capacitor?.Plugins?.Preferences;
+}
+
 function createNotificationId() {
   return Math.floor(Math.random() * 2147483646) + 1;
+}
+
+function parseReminders(raw) {
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter((item) => item && typeof item === 'object' && typeof item.text === 'string');
+  } catch (error) {
+    console.warn('Could not parse reminders:', error);
+    return [];
+  }
+}
+
+async function loadRemindersFromStorage() {
+  try {
+    const preferences = getPreferences();
+    if (preferences) {
+      const { value } = await preferences.get({ key: STORAGE_KEY });
+      if (value) {
+        remindersCache = parseReminders(value);
+        return remindersCache;
+      }
+
+      // Vorhandene Browser-Daten einmalig nach Preferences migrieren
+      const legacy = localStorage.getItem(STORAGE_KEY);
+      if (legacy) {
+        remindersCache = parseReminders(legacy);
+        await preferences.set({ key: STORAGE_KEY, value: JSON.stringify(remindersCache) });
+        return remindersCache;
+      }
+
+      remindersCache = [];
+      return remindersCache;
+    }
+
+    remindersCache = parseReminders(localStorage.getItem(STORAGE_KEY));
+    return remindersCache;
+  } catch (error) {
+    console.warn('Could not load reminders:', error);
+    remindersCache = parseReminders(localStorage.getItem(STORAGE_KEY));
+    return remindersCache;
+  }
+}
+
+function loadReminders() {
+  return remindersCache;
+}
+
+async function saveReminders(reminders) {
+  const safeReminders = Array.isArray(reminders) ? reminders : [];
+  remindersCache = safeReminders;
+  const serialized = JSON.stringify(safeReminders);
+
+  try {
+    const preferences = getPreferences();
+    if (preferences) {
+      await preferences.set({ key: STORAGE_KEY, value: serialized });
+    }
+  } catch (error) {
+    console.warn('Could not save reminders to Preferences:', error);
+  }
+
+  try {
+    localStorage.setItem(STORAGE_KEY, serialized);
+  } catch (error) {
+    console.warn('Could not save reminders to localStorage:', error);
+  }
 }
 
 async function cancelReminderNotification(notificationId) {
@@ -114,7 +193,7 @@ async function registerNotificationActions() {
         }
 
         const [removed] = reminders.splice(reminderIndex, 1);
-        saveReminders(reminders);
+        await saveReminders(reminders);
         await cancelReminderNotification(removed?.notificationId ?? notification.id);
         renderReminders();
       }
@@ -124,38 +203,17 @@ async function registerNotificationActions() {
   }
 }
 
-// 3 Block Erinnerungen aufrufen
-function loadReminders() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return [];
-    }
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed.filter((item) => item && typeof item === 'object' && typeof item.text === 'string');
-  } catch (error) {
-    console.warn('Could not load reminders:', error);
-    return [];
-  }
-}
-
-function saveReminders(reminders) {
-  const safeReminders = Array.isArray(reminders) ? reminders : [];
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(safeReminders));
-}
-
-// 4 Block Datenformatierung
+// 3 Block Datenformatierung
 function formatDateTime(value) {
   if (!value) {
     return 'Kein Datum';
   }
 
   const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'Kein Datum';
+  }
+
   return date.toLocaleString('de-DE', {
     day: '2-digit',
     month: '2-digit',
@@ -223,7 +281,7 @@ function bindButtonClick(button, handler) {
   }
 }
 
-// 5 Block Erinnerungen anzeigen, UI aufbauen
+// 4 Block Erinnerungen anzeigen, UI aufbauen
 function renderReminders() {
   const reminders = loadReminders();
   if (reminders.length === 0) {
@@ -349,12 +407,12 @@ async function deleteReminder(index) {
     return;
   }
 
-  saveReminders(reminders);
+  await saveReminders(reminders);
   await cancelReminderNotification(removed.notificationId);
   renderReminders();
 }
 
-// 6 Block APp-start und Aufbau
+// 5 Block App-start und Aufbau
 async function saveCurrentReminder() {
   const text = (await getFieldValue(reminderText)).trim();
   const datetime = await getFieldValue(reminderDatetime);
@@ -378,9 +436,16 @@ async function saveCurrentReminder() {
     reminders.push(reminder);
   }
 
-  saveReminders(reminders);
+  await saveReminders(reminders);
   await scheduleReminderNotification(reminder);
   closeDialog();
+  renderReminders();
+}
+
+async function initApp() {
+  await loadRemindersFromStorage();
+  registerAppShortcutListener();
+  registerNotificationActions();
   renderReminders();
 }
 
@@ -399,6 +464,4 @@ if (dialogOverlay) {
   dialogOverlay.style.display = 'none';
 }
 
-registerAppShortcutListener();
-registerNotificationActions();
-renderReminders();
+initApp();
