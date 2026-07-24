@@ -304,7 +304,7 @@ function registerAppShortcutListener() {
   }
 
   appShortcuts.addListener('click', ({ id }) => {
-    if (id === 'feedback') {
+    if (id === 'newReminder') {
       openDialog();
     }
   }).catch(error => {
