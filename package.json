@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "start": "serve www",
-    "build": "rm -rf www && mkdir -p www && cp -R src/. www/",
+    "build": "node -e \"require('fs').rmSync('www',{recursive:true,force:true}); require('fs').cpSync('src','www',{recursive:true})\"",
     "sync": "npx cap sync",
     "android": "npx cap open android"
   },
@@ -20,6 +20,6 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.4.1",
-    "serve": "^14.0.1"
+    "serve": "^14.2.6"
   }
 }
