@@ -5,7 +5,7 @@
   "plugins": {
     "AppShortcuts": {
       "shortcuts": [
-        { "id": "feedback", "title": "Feedback" }
+        { "id": "newReminder", "title": "Neue Erinnerung" }
       ]
     }
   }

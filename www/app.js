@@ -277,16 +277,24 @@ function openDialog(reminder = null, index = null) {
     dialogOverlay.style.display = 'grid';
   }
 
+  const dialogTitle = dialogOverlay?.querySelector('ion-card-title');
+
   if (reminder) {
     reminderText.value = reminder.text;
     reminderDatetime.value = reminder.datetime || '';
     editIndex = index;
     saveButton.textContent = 'Aktualisieren';
+    if (dialogTitle) {
+      dialogTitle.textContent = 'Erinnerung bearbeiten';
+    }
   } else {
     reminderText.value = '';
     reminderDatetime.value = '';
     editIndex = null;
     saveButton.textContent = 'Speichern';
+    if (dialogTitle) {
+      dialogTitle.textContent = 'Neue Erinnerung';
+    }
   }
 }
 
@@ -304,12 +312,26 @@ function registerAppShortcutListener() {
   }
 
   appShortcuts.addListener('click', ({ id }) => {
-    if (id === 'feedback') {
+    if (id === 'newReminder') {
       openDialog();
     }
   }).catch(error => {
     console.warn('Could not register app shortcut listener:', error);
   });
+}
+
+async function showMessage(message) {
+  try {
+    const toast = document.createElement('ion-toast');
+    toast.message = message;
+    toast.duration = 2500;
+    toast.color = 'danger';
+    toast.position = 'top';
+    document.body.appendChild(toast);
+    await toast.present();
+  } catch (error) {
+    window.alert(message);
+  }
 }
 
 function editReminder(index) {
@@ -338,6 +360,7 @@ async function saveCurrentReminder() {
   const datetime = await getFieldValue(reminderDatetime);
 
   if (!text) {
+    await showMessage('Bitte Text eingeben');
     return;
   }
 
