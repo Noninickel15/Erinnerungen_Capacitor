@@ -1,12 +1,9 @@
-import { DatetimePicker } from '@capawesome-team/capacitor-datetime-picker';
-
-
+// 1 Block Elemente aus dem HTML holen
 const reminderList = document.getElementById('reminderList');
 const addReminderButton = document.getElementById('addReminderButton');
 const dialogOverlay = document.getElementById('dialogOverlay');
 const reminderText = document.getElementById('reminderText');
 const reminderDatetime = document.getElementById('reminderDatetime');
-const nativeDatetimePickerButton = document.getElementById('nativeDatetimePickerButton');
 const cancelButton = document.getElementById('cancelButton');
 const saveButton = document.getElementById('saveButton');
 
@@ -15,50 +12,35 @@ const REMINDER_ACTION_TYPE_ID = 'reminder_actions';
 const COMPLETE_REMINDER_ACTION_ID = 'complete_reminder';
 let editIndex = null;
 
+// 2 Block Dattenhaltung im local storage des Browsers
 function getLocalNotifications() {
   return window.Capacitor?.Plugins?.LocalNotifications;
 }
 
-async function presentDatetimePicker(initialValue = null) {
-  const datetimePicker = window.Capacitor?.Plugins?.DatetimePicker;
-  if (!datetimePicker) {
-    return null;
+function createNotificationId() {
+  return Math.floor(Math.random() * 2147483646) + 1;
+}
+
+async function cancelReminderNotification(notificationId) {
+  if (!notificationId) {
+    return;
+  }
+
+  const localNotifications = getLocalNotifications();
+  if (!localNotifications) {
+    return;
   }
 
   try {
-    const date = initialValue ? new Date(initialValue) : new Date();
-    const { value } = await datetimePicker.present({
-      cancelButtonText: 'Abbrechen',
-      doneButtonText: 'Übernehmen',
-      mode: 'datetime',
-      value: date.toISOString(),
-      theme: 'dark',
-      locale: 'de-DE'
-    });
-
-    return value;
+    await localNotifications.cancel({ notifications: [{ id: notificationId }] });
   } catch (error) {
-    // Closing the native picker is reported as an error by the plugin.
-    return null;
+    console.warn('Could not cancel local notification:', error);
   }
-}
-
-async function chooseNativeDatetime() {
-  const currentValue = await getFieldValue(reminderDatetime);
-  const value = await presentDatetimePicker(currentValue);
-
-  if (value) {
-    reminderDatetime.value = value;
-  }
-}
-
-function createNotificationId() {
-  // Android notification IDs must fit in a signed 32-bit integer.
-  return Math.floor(Math.random() * 2147483646) + 1;
 }
 
 async function scheduleReminderNotification(reminder) {
   if (!reminder.datetime) {
+    await cancelReminderNotification(reminder.notificationId);
     return;
   }
 
@@ -70,7 +52,6 @@ async function scheduleReminderNotification(reminder) {
 
   const localNotifications = getLocalNotifications();
   if (!localNotifications) {
-    // The browser preview does not have the native Capacitor bridge.
     return;
   }
 
@@ -84,6 +65,9 @@ async function scheduleReminderNotification(reminder) {
       console.warn('Notification permission was not granted.');
       return;
     }
+
+    // Replace any previously scheduled notification with the same id.
+    await cancelReminderNotification(reminder.notificationId);
 
     await localNotifications.schedule({
       notifications: [{
@@ -116,7 +100,7 @@ async function registerNotificationActions() {
 
     await localNotifications.addListener(
       'localNotificationActionPerformed',
-      ({ actionId, notification }) => {
+      async ({ actionId, notification }) => {
         if (actionId !== COMPLETE_REMINDER_ACTION_ID) {
           return;
         }
@@ -129,8 +113,9 @@ async function registerNotificationActions() {
           return;
         }
 
-        reminders.splice(reminderIndex, 1);
+        const [removed] = reminders.splice(reminderIndex, 1);
         saveReminders(reminders);
+        await cancelReminderNotification(removed?.notificationId ?? notification.id);
         renderReminders();
       }
     );
@@ -139,6 +124,7 @@ async function registerNotificationActions() {
   }
 }
 
+// 3 Block Erinnerungen aufrufen
 function loadReminders() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -163,20 +149,21 @@ function saveReminders(reminders) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(safeReminders));
 }
 
-const present = async () => {
-  const date = new Date('1995-12-24T02:23:00');
+// 4 Block Datenformatierung
+function formatDateTime(value) {
+  if (!value) {
+    return 'Kein Datum';
+  }
 
-  const { value } = await DatetimePicker.present({
-    cancelButtonText: 'Cancel',
-    doneButtonText: 'Ok',
-    mode: 'time',
-    value: date.toISOString(),
-    theme: 'dark',
-    locale: 'en-US',
+  const date = new Date(value);
+  return date.toLocaleString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
   });
-
-  return value;
-};
+}
 
 function escapeHtml(value) {
   return String(value)
@@ -236,6 +223,7 @@ function bindButtonClick(button, handler) {
   }
 }
 
+// 5 Block Erinnerungen anzeigen, UI aufbauen
 function renderReminders() {
   const reminders = loadReminders();
   if (reminders.length === 0) {
@@ -332,14 +320,19 @@ function editReminder(index) {
   openDialog(reminder, index);
 }
 
-function deleteReminder(index) {
+async function deleteReminder(index) {
   const reminders = loadReminders();
-  reminders.splice(index, 1);
+  const [removed] = reminders.splice(index, 1);
+  if (!removed) {
+    return;
+  }
+
   saveReminders(reminders);
+  await cancelReminderNotification(removed.notificationId);
   renderReminders();
 }
 
-
+// 6 Block APp-start und Aufbau
 async function saveCurrentReminder() {
   const text = (await getFieldValue(reminderText)).trim();
   const datetime = await getFieldValue(reminderDatetime);
@@ -370,9 +363,6 @@ async function saveCurrentReminder() {
 
 if (addReminderButton) {
   bindButtonClick(addReminderButton, () => openDialog());
-}
-if (nativeDatetimePickerButton) {
-  bindButtonClick(nativeDatetimePickerButton, chooseNativeDatetime);
 }
 if (cancelButton) {
   bindButtonClick(cancelButton, closeDialog);

@@ -1,3 +1,4 @@
+// 1 Block Elemente aus dem HTML holen
 const reminderList = document.getElementById('reminderList');
 const addReminderButton = document.getElementById('addReminderButton');
 const dialogOverlay = document.getElementById('dialogOverlay');
@@ -11,17 +12,35 @@ const REMINDER_ACTION_TYPE_ID = 'reminder_actions';
 const COMPLETE_REMINDER_ACTION_ID = 'complete_reminder';
 let editIndex = null;
 
+// 2 Block Dattenhaltung im local storage des Browsers
 function getLocalNotifications() {
   return window.Capacitor?.Plugins?.LocalNotifications;
 }
 
 function createNotificationId() {
-  // Android notification IDs must fit in a signed 32-bit integer.
   return Math.floor(Math.random() * 2147483646) + 1;
+}
+
+async function cancelReminderNotification(notificationId) {
+  if (!notificationId) {
+    return;
+  }
+
+  const localNotifications = getLocalNotifications();
+  if (!localNotifications) {
+    return;
+  }
+
+  try {
+    await localNotifications.cancel({ notifications: [{ id: notificationId }] });
+  } catch (error) {
+    console.warn('Could not cancel local notification:', error);
+  }
 }
 
 async function scheduleReminderNotification(reminder) {
   if (!reminder.datetime) {
+    await cancelReminderNotification(reminder.notificationId);
     return;
   }
 
@@ -33,7 +52,6 @@ async function scheduleReminderNotification(reminder) {
 
   const localNotifications = getLocalNotifications();
   if (!localNotifications) {
-    // The browser preview does not have the native Capacitor bridge.
     return;
   }
 
@@ -47,6 +65,9 @@ async function scheduleReminderNotification(reminder) {
       console.warn('Notification permission was not granted.');
       return;
     }
+
+    // Replace any previously scheduled notification with the same id.
+    await cancelReminderNotification(reminder.notificationId);
 
     await localNotifications.schedule({
       notifications: [{
@@ -79,7 +100,7 @@ async function registerNotificationActions() {
 
     await localNotifications.addListener(
       'localNotificationActionPerformed',
-      ({ actionId, notification }) => {
+      async ({ actionId, notification }) => {
         if (actionId !== COMPLETE_REMINDER_ACTION_ID) {
           return;
         }
@@ -92,8 +113,9 @@ async function registerNotificationActions() {
           return;
         }
 
-        reminders.splice(reminderIndex, 1);
+        const [removed] = reminders.splice(reminderIndex, 1);
         saveReminders(reminders);
+        await cancelReminderNotification(removed?.notificationId ?? notification.id);
         renderReminders();
       }
     );
@@ -102,6 +124,7 @@ async function registerNotificationActions() {
   }
 }
 
+// 3 Block Erinnerungen aufrufen
 function loadReminders() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -126,6 +149,7 @@ function saveReminders(reminders) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(safeReminders));
 }
 
+// 4 Block Datenformatierung
 function formatDateTime(value) {
   if (!value) {
     return 'Kein Datum';
@@ -199,6 +223,7 @@ function bindButtonClick(button, handler) {
   }
 }
 
+// 5 Block Erinnerungen anzeigen, UI aufbauen
 function renderReminders() {
   const reminders = loadReminders();
   if (reminders.length === 0) {
@@ -295,14 +320,19 @@ function editReminder(index) {
   openDialog(reminder, index);
 }
 
-function deleteReminder(index) {
+async function deleteReminder(index) {
   const reminders = loadReminders();
-  reminders.splice(index, 1);
+  const [removed] = reminders.splice(index, 1);
+  if (!removed) {
+    return;
+  }
+
   saveReminders(reminders);
+  await cancelReminderNotification(removed.notificationId);
   renderReminders();
 }
 
-
+// 6 Block APp-start und Aufbau
 async function saveCurrentReminder() {
   const text = (await getFieldValue(reminderText)).trim();
   const datetime = await getFieldValue(reminderDatetime);

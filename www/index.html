@@ -7,8 +7,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Erinnerungsapp" />
     <title>Erinnerungsapp</title>
-    <link rel="icon" type="image/png" href="./erinnerung.png" />
-    <link rel="android-touch-icon" href="./erinnerung.png" />
+    <link rel="icon" type="image/png" href="./assets/erinnerung.png" />
+    <link rel="apple-touch-icon" href="./assets/erinnerung.png" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css" />
     <link rel="stylesheet" href="styles.css" />
     <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
@@ -53,11 +53,6 @@
             <ion-label position="stacked">Datum & Uhrzeit</ion-label>
             <ion-datetime id="reminderDatetime" presentation="date-time" prefer-wheel="true"></ion-datetime>
           </ion-item>
-
-          <ion-button id="nativeDatetimePickerButton" type="button" fill="outline">
-            Datum & Uhrzeit auswählen
-          </ion-button>
-
           <div class="dialog-actions">
             <ion-button id="cancelButton" type="button" fill="clear" color="medium">Abbrechen</ion-button>
             <ion-button id="saveButton" type="button">Speichern</ion-button>
