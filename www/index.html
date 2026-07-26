@@ -4,14 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#3880ff" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Erinnerungsapp" />
-    <title>Erinnerungsapp</title>
-    <link rel="icon" type="image/png" href="./assets/erinnerung.png" />
-    <link rel="apple-touch-icon" href="./assets/erinnerung.png" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>Erinnerungen</title>
+    <link rel="icon" type="image/png" sizes="512x512" href="./assets/erinnerung.png" />
+    <link rel="shortcut icon" type="image/png" href="./assets/erinnerung.png" />
+    <link rel="stylesheet" href="./vendor/ionic/css/ionic.bundle.css" />
     <link rel="stylesheet" href="styles.css" />
-    <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
+    <script type="module" src="./vendor/ionic/dist/ionic/ionic.esm.js"></script>
   </head>
   <body>
     <ion-app>
@@ -30,8 +29,8 @@
         </ion-content>
 
         <ion-fab slot="fixed" vertical="bottom" horizontal="end">
-          <ion-fab-button id="addReminderButton" color="primary">
-            <ion-icon name="add"></ion-icon>
+          <ion-fab-button id="addReminderButton" color="primary" aria-label="Neue Erinnerung">
+            +
           </ion-fab-button>
         </ion-fab>
       </ion-page>
@@ -49,10 +48,26 @@
             <ion-input id="reminderText" placeholder="z. B. Arzttermin" autocomplete="off"></ion-input>
           </ion-item>
 
-          <ion-item class="ion-no-padding" lines="none">
-            <ion-label position="stacked">Datum & Uhrzeit</ion-label>
-            <ion-datetime id="reminderDatetime" presentation="date-time" prefer-wheel="true"></ion-datetime>
+          <p id="dialogMessage" class="dialog-message" hidden></p>
+
+          <ion-item class="ion-no-padding datetime-toggle-item" lines="none">
+            <ion-toggle id="useDatetimeToggle" label-placement="start" justify="space-between">
+              Datum & Uhrzeit setzen
+            </ion-toggle>
           </ion-item>
+
+          <div id="datetimeSection" class="datetime-section" hidden>
+            <ion-item class="ion-no-padding" lines="none">
+              <ion-label position="stacked">Datum & Uhrzeit</ion-label>
+              <ion-datetime
+                id="reminderDatetime"
+                presentation="date-time"
+                prefer-wheel="true"
+                locale="de-DE"
+                hour-cycle="h23"
+              ></ion-datetime>
+            </ion-item>
+          </div>
           <div class="dialog-actions">
             <ion-button id="cancelButton" type="button" fill="clear" color="medium">Abbrechen</ion-button>
             <ion-button id="saveButton" type="button">Speichern</ion-button>

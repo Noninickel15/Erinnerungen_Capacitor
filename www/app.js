@@ -4,6 +4,9 @@ const addReminderButton = document.getElementById('addReminderButton');
 const dialogOverlay = document.getElementById('dialogOverlay');
 const reminderText = document.getElementById('reminderText');
 const reminderDatetime = document.getElementById('reminderDatetime');
+const useDatetimeToggle = document.getElementById('useDatetimeToggle');
+const datetimeSection = document.getElementById('datetimeSection');
+const dialogMessage = document.getElementById('dialogMessage');
 const cancelButton = document.getElementById('cancelButton');
 const saveButton = document.getElementById('saveButton');
 
@@ -115,37 +118,64 @@ async function cancelReminderNotification(notificationId) {
   } catch (error) {
     console.warn('Could not cancel local notification:', error);
   }
+
+  try {
+    await localNotifications.removeDeliveredNotifications({
+      notifications: [{ id: notificationId }]
+    });
+  } catch (error) {
+    // Optional on platforms that do not support delivered notifications.
+  }
 }
 
-async function scheduleReminderNotification(reminder) {
-  if (!reminder.datetime) {
-    await cancelReminderNotification(reminder.notificationId);
-    return;
-  }
-
-  const scheduledAt = new Date(reminder.datetime);
-  if (Number.isNaN(scheduledAt.getTime())) {
-    console.warn('Could not schedule reminder: invalid date:', reminder.datetime);
-    return;
-  }
-
+async function ensureReminderActionTypes() {
   const localNotifications = getLocalNotifications();
   if (!localNotifications) {
     return;
   }
 
+  await localNotifications.registerActionTypes({
+    types: [{
+      id: REMINDER_ACTION_TYPE_ID,
+      actions: [{ id: COMPLETE_REMINDER_ACTION_ID, title: 'Erledigt' }]
+    }]
+  });
+}
+
+async function scheduleReminderNotification(reminder) {
+  if (!reminder.datetime) {
+    await cancelReminderNotification(reminder.notificationId);
+    return { ok: true, skipped: true };
+  }
+
+  const scheduledAt = new Date(reminder.datetime);
+  if (Number.isNaN(scheduledAt.getTime())) {
+    console.warn('Could not schedule reminder: invalid date:', reminder.datetime);
+    return { ok: false, reason: 'invalid' };
+  }
+
+  if (scheduledAt.getTime() <= Date.now()) {
+    await cancelReminderNotification(reminder.notificationId);
+    return { ok: false, reason: 'past' };
+  }
+
+  const localNotifications = getLocalNotifications();
+  if (!localNotifications) {
+    return { ok: false, reason: 'unavailable' };
+  }
+
   try {
     let permission = await localNotifications.checkPermissions();
-    if (permission.display === 'prompt') {
+    if (permission.display !== 'granted') {
       permission = await localNotifications.requestPermissions();
     }
 
     if (permission.display !== 'granted') {
       console.warn('Notification permission was not granted.');
-      return;
+      return { ok: false, reason: 'permission' };
     }
 
-    // Replace any previously scheduled notification with the same id.
+    await ensureReminderActionTypes();
     await cancelReminderNotification(reminder.notificationId);
 
     await localNotifications.schedule({
@@ -154,13 +184,37 @@ async function scheduleReminderNotification(reminder) {
         title: 'Erinnerung',
         body: reminder.text,
         actionTypeId: REMINDER_ACTION_TYPE_ID,
-        schedule: { at: scheduledAt }
+        schedule: { at: scheduledAt, allowWhileIdle: true },
+        autoCancel: true
       }]
     });
+    return { ok: true };
   } catch (error) {
     // The reminder remains saved if scheduling is unavailable or rejected.
     console.warn('Could not schedule local notification:', error);
+    return { ok: false, reason: 'error' };
   }
+}
+
+async function completeReminderByNotificationId(notificationId) {
+  if (notificationId === null || notificationId === undefined) {
+    return;
+  }
+
+  const targetId = Number(notificationId);
+  const reminders = loadReminders();
+  const reminderIndex = reminders.findIndex(
+    reminder => Number(reminder.notificationId) === targetId
+  );
+  if (reminderIndex === -1) {
+    await cancelReminderNotification(notificationId);
+    return;
+  }
+
+  const [removed] = reminders.splice(reminderIndex, 1);
+  await saveReminders(reminders);
+  await cancelReminderNotification(removed?.notificationId ?? notificationId);
+  renderReminders();
 }
 
 async function registerNotificationActions() {
@@ -170,12 +224,7 @@ async function registerNotificationActions() {
   }
 
   try {
-    await localNotifications.registerActionTypes({
-      types: [{
-        id: REMINDER_ACTION_TYPE_ID,
-        actions: [{ id: COMPLETE_REMINDER_ACTION_ID, title: 'Erledigt' }]
-      }]
-    });
+    await ensureReminderActionTypes();
 
     await localNotifications.addListener(
       'localNotificationActionPerformed',
@@ -184,18 +233,7 @@ async function registerNotificationActions() {
           return;
         }
 
-        const reminders = loadReminders();
-        const reminderIndex = reminders.findIndex(
-          reminder => reminder.notificationId === notification.id
-        );
-        if (reminderIndex === -1) {
-          return;
-        }
-
-        const [removed] = reminders.splice(reminderIndex, 1);
-        await saveReminders(reminders);
-        await cancelReminderNotification(removed?.notificationId ?? notification.id);
-        renderReminders();
+        await completeReminderByNotificationId(notification?.id);
       }
     );
   } catch (error) {
@@ -219,7 +257,8 @@ function formatDateTime(value) {
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    hour12: false
   });
 }
 
@@ -237,8 +276,14 @@ async function getFieldValue(element) {
     return '';
   }
 
-  if (typeof element.value === 'string' && element.value.length > 0) {
-    return element.value;
+  const currentValue = element.value;
+  if (currentValue === null || currentValue === undefined || currentValue === '') {
+    // ion-datetime ohne Auswahl / nach Clear
+    if (element.tagName === 'ION-DATETIME') {
+      return '';
+    }
+  } else if (typeof currentValue === 'string') {
+    return currentValue;
   }
 
   if (element.tagName === 'ION-INPUT') {
@@ -259,7 +304,7 @@ async function getFieldValue(element) {
     }
   }
 
-  return element.value ?? '';
+  return typeof currentValue === 'string' ? currentValue : '';
 }
 
 function bindButtonClick(button, handler) {
@@ -267,18 +312,13 @@ function bindButtonClick(button, handler) {
     return;
   }
 
-  const handleClick = (event) => {
+  // Nur am Host-Element lauschen – ein zweiter Listener am Shadow-Button
+  // würde denselben Klick doppelt auslösen.
+  button.addEventListener('click', (event) => {
     event.preventDefault();
     event.stopPropagation();
     handler(event);
-  };
-
-  button.addEventListener('click', handleClick);
-
-  const nativeButton = button.shadowRoot?.querySelector('button');
-  if (nativeButton) {
-    nativeButton.addEventListener('click', handleClick);
-  }
+  });
 }
 
 // 4 Block Erinnerungen anzeigen, UI aufbauen
@@ -329,17 +369,68 @@ function renderReminders() {
   });
 }
 
+function toDatetimeLocalValue(date = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
+}
+
+function setDatetimeEnabled(enabled, value = null) {
+  if (useDatetimeToggle) {
+    useDatetimeToggle.checked = enabled;
+  }
+
+  if (datetimeSection) {
+    datetimeSection.hidden = !enabled;
+  }
+
+  if (!reminderDatetime) {
+    return;
+  }
+
+  if (enabled) {
+    // Expliziten Wert setzen, damit „Heute 13:26“ wirklich gespeichert wird
+    reminderDatetime.value = value || toDatetimeLocalValue();
+    return;
+  }
+
+  if (typeof reminderDatetime.reset === 'function') {
+    reminderDatetime.reset();
+  }
+  reminderDatetime.value = undefined;
+}
+
+function clearDialogMessage() {
+  if (!dialogMessage) {
+    return;
+  }
+
+  dialogMessage.hidden = true;
+  dialogMessage.textContent = '';
+  dialogMessage.removeAttribute('data-color');
+}
+
+function showDialogMessage(message, color = 'danger') {
+  if (!dialogMessage) {
+    return showMessage(message, color);
+  }
+
+  dialogMessage.textContent = message;
+  dialogMessage.setAttribute('data-color', color);
+  dialogMessage.hidden = false;
+}
+
 function openDialog(reminder = null, index = null) {
   if (dialogOverlay) {
     dialogOverlay.hidden = false;
     dialogOverlay.style.display = 'grid';
   }
 
+  clearDialogMessage();
   const dialogTitle = dialogOverlay?.querySelector('ion-card-title');
 
   if (reminder) {
     reminderText.value = reminder.text;
-    reminderDatetime.value = reminder.datetime || '';
+    setDatetimeEnabled(Boolean(reminder.datetime), reminder.datetime || null);
     editIndex = index;
     saveButton.textContent = 'Aktualisieren';
     if (dialogTitle) {
@@ -347,7 +438,7 @@ function openDialog(reminder = null, index = null) {
     }
   } else {
     reminderText.value = '';
-    reminderDatetime.value = '';
+    setDatetimeEnabled(false);
     editIndex = null;
     saveButton.textContent = 'Speichern';
     if (dialogTitle) {
@@ -357,6 +448,7 @@ function openDialog(reminder = null, index = null) {
 }
 
 function closeDialog() {
+  clearDialogMessage();
   if (dialogOverlay) {
     dialogOverlay.hidden = true;
     dialogOverlay.style.display = 'none';
@@ -369,8 +461,9 @@ function registerAppShortcutListener() {
     return;
   }
 
-  appShortcuts.addListener('click', ({ id }) => {
-    if (id === 'newReminder') {
+  appShortcuts.addListener('click', (event) => {
+    const shortcutId = event?.shortcutId ?? event?.id;
+    if (shortcutId === 'newReminder') {
       openDialog();
     }
   }).catch(error => {
@@ -378,12 +471,12 @@ function registerAppShortcutListener() {
   });
 }
 
-async function showMessage(message) {
+async function showMessage(message, color = 'danger') {
   try {
     const toast = document.createElement('ion-toast');
     toast.message = message;
     toast.duration = 2500;
-    toast.color = 'danger';
+    toast.color = color;
     toast.position = 'top';
     document.body.appendChild(toast);
     await toast.present();
@@ -415,18 +508,38 @@ async function deleteReminder(index) {
 // 5 Block App-start und Aufbau
 async function saveCurrentReminder() {
   const text = (await getFieldValue(reminderText)).trim();
-  const datetime = await getFieldValue(reminderDatetime);
+  const useDatetime = Boolean(useDatetimeToggle?.checked);
+  let datetime = null;
+
+  if (useDatetime) {
+    // Aktuell angezeigte Räder übernehmen (auch ohne extra Tippen)
+    if (reminderDatetime && typeof reminderDatetime.confirm === 'function') {
+      try {
+        await reminderDatetime.confirm(true);
+      } catch (error) {
+        // Fallback auf element.value
+      }
+    }
+
+    const datetimeRaw = await getFieldValue(reminderDatetime);
+    datetime = typeof datetimeRaw === 'string' ? datetimeRaw.trim() : '';
+    if (!datetime) {
+      datetime = toDatetimeLocalValue();
+    }
+  }
 
   if (!text) {
-    await showMessage('Bitte Text eingeben');
+    showDialogMessage('Bitte Text eingeben');
     return;
   }
+
+  clearDialogMessage();
 
   const reminders = loadReminders();
   const previousReminder = editIndex !== null ? reminders[editIndex] : null;
   const reminder = {
     text,
-    datetime: datetime || null,
+    datetime,
     notificationId: previousReminder?.notificationId ?? createNotificationId()
   };
 
@@ -437,15 +550,22 @@ async function saveCurrentReminder() {
   }
 
   await saveReminders(reminders);
-  await scheduleReminderNotification(reminder);
+  const scheduleResult = await scheduleReminderNotification(reminder);
   closeDialog();
   renderReminders();
+
+  if (scheduleResult?.reason === 'past') {
+    await showMessage('Erinnerung gespeichert, aber die Zeit liegt in der Vergangenheit – keine Benachrichtigung geplant.', 'warning');
+  } else if (scheduleResult?.reason === 'permission') {
+    await showMessage('Erinnerung gespeichert, aber Benachrichtigungen sind nicht erlaubt.', 'warning');
+  }
 }
 
 async function initApp() {
-  await loadRemindersFromStorage();
+  // Shortcut-Listener früh registrieren, damit Kaltstart-Events nicht verloren gehen
   registerAppShortcutListener();
-  registerNotificationActions();
+  await loadRemindersFromStorage();
+  await registerNotificationActions();
   renderReminders();
 }
 
@@ -457,6 +577,12 @@ if (cancelButton) {
 }
 if (saveButton) {
   bindButtonClick(saveButton, saveCurrentReminder);
+}
+if (useDatetimeToggle) {
+  useDatetimeToggle.addEventListener('ionChange', (event) => {
+    const enabled = Boolean(event.detail?.checked ?? useDatetimeToggle.checked);
+    setDatetimeEnabled(enabled, enabled ? toDatetimeLocalValue() : null);
+  });
 }
 
 if (dialogOverlay) {

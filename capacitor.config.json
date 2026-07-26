@@ -1,6 +1,6 @@
 {
   "appId": "com.erinnerungsapp.app",
-  "appName": "Erinnerungsapp",
+  "appName": "Erinnerungen",
   "webDir": "www",
   "plugins": {
     "AppShortcuts": {

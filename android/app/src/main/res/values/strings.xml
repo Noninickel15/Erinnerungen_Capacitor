@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Erinnerungsapp</string>
-    <string name="title_activity_main">Erinnerungsapp</string>
+    <string name="app_name">Erinnerungen</string>
+    <string name="title_activity_main">Erinnerungen</string>
     <string name="package_name">com.erinnerungsapp.app</string>
     <string name="custom_url_scheme">com.erinnerungsapp.app</string>
 </resources>

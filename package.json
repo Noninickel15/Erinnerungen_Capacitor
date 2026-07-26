@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "start": "serve www",
-    "build": "node -e \"require('fs').rmSync('www',{recursive:true,force:true}); require('fs').cpSync('src','www',{recursive:true})\"",
+    "build": "node scripts/build.js",
     "sync": "npx cap sync",
     "android": "npx cap open android"
   },
