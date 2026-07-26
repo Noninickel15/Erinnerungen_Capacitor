@@ -1,5 +1,5 @@
 :root {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: system-ui, 'Roboto', sans-serif;
   background: #f5f7fb;
   color: #162033;
   --safe-area-top: env(safe-area-inset-top, 0px);
@@ -126,12 +126,49 @@ ion-content {
   margin-top: 12px;
 }
 
-ion-item {
-  --padding-start: 0;
-  --inner-padding-end: 0;
+.dialog-message {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.dialog-message[data-color="danger"] {
+  background: #eb445a;
+  color: #fff;
+}
+
+.dialog-message[data-color="warning"] {
+  background: #ffc409;
+  color: #162033;
+}
+
+.dialog-message[hidden] {
+  display: none;
 }
 
 ion-input,
 ion-datetime {
   margin-top: 6px;
 }
+
+.datetime-toggle-item {
+  margin-top: 8px;
+  --min-height: 44px;
+}
+
+.datetime-section {
+  margin-top: 4px;
+}
+
+.datetime-section[hidden] {
+  display: none;
+}
+
+ion-fab-button {
+  font-size: 1.8rem;
+  font-weight: 300;
+  line-height: 1;
+}
+
